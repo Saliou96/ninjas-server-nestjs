@@ -28,7 +28,7 @@ export class NinjasController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: number){
     try {
       return this.ninjasService.findOne(+id);
     } catch (error) {
