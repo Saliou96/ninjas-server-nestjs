@@ -1,9 +1,12 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { CreateNinjaDto } from './dto/create-ninja.dto';
-import { UpdateNinjaDto } from './dto/update-ninja.dto';
-import { Ninja } from './entities/ninja.entity';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Ninja } from './entities/ninja.entity';
+import { NinjaDto } from './dto/ninja.dto';
 
 @Injectable()
 export class NinjasService {
@@ -12,44 +15,96 @@ export class NinjasService {
     private ninjaRepository: Repository<Ninja>,
   ) {}
 
-  create(createNinjaDto: CreateNinjaDto) {
-    return 'This action adds a new ninja';
+  async create(createNinjaDto: NinjaDto) {
+    const existing = await this.ninjaRepository.findOneBy({ name: createNinjaDto.name });
+    if (existing) {
+      throw new BadRequestException({
+        status: 400,
+        message: `Un ninja nommé "${createNinjaDto.name}" existe déjà.`,
+      });
+    }
+
+    const ninja = this.ninjaRepository.create(createNinjaDto);
+    await this.ninjaRepository.save(ninja);
+
+    return {
+      status: 201,
+      message: 'Ninja créé avec succès',
+      data: ninja,
+    };
   }
 
-  findAll(): Promise<Ninja[]> {
-    return this.ninjaRepository.find();
+  async findAll() {
+    const ninjas = await this.ninjaRepository.find();
+    return {
+      status: 200,
+      message: 'Liste des ninjas récupérée avec succès',
+      data: ninjas,
+    };
   }
 
-  // Trouver un ninja par ID
-  async findOne(id: any): Promise<Ninja> {
-    const ninja = await this.ninjaRepository.findOneBy(id);
+  async findOne(id: number) {
+    const ninja = await this.ninjaRepository.findOneBy({ id });
     if (!ninja) {
-      throw new NotFoundException(`Ninja with ID ${id} not found`);
+      throw new NotFoundException({
+        status: 404,
+        message: `Ninja avec l'ID ${id} non trouvé.`,
+      });
     }
-    return ninja;
+
+    return {
+      status: 200,
+      message: 'Ninja récupéré avec succès',
+      data: ninja,
+    };
   }
 
-  // Mettre à jour un ninja
-  async update(id: number, updateNinjaDto: UpdateNinjaDto): Promise<Ninja> {
-    const ninja = await this.findOne(id); // Vérifie d'abord si le ninja existe
-
-    try {
-      // Met à jour les champs du ninja
-      Object.assign(ninja, updateNinjaDto);
-      return await this.ninjaRepository.save(ninja);
-    } catch (error) {
-      throw new BadRequestException('Error updating ninja');
+  async update(id: number, updateNinjaDto: NinjaDto) {
+    const ninja = await this.ninjaRepository.findOneBy({ id });
+    if (!ninja) {
+      throw new NotFoundException({
+        status: 404,
+        message: `Ninja avec l'ID ${id} non trouvé.`,
+      });
     }
+
+    if (
+      updateNinjaDto.name &&
+      updateNinjaDto.name !== ninja.name
+    ) {
+      const existing = await this.ninjaRepository.findOneBy({ name: updateNinjaDto.name });
+      if (existing) {
+        throw new BadRequestException({
+          status: 400,
+          message: `Un autre ninja nommé "${updateNinjaDto.name}" existe déjà.`,
+        });
+      }
+    }
+
+    Object.assign(ninja, updateNinjaDto);
+    await this.ninjaRepository.save(ninja);
+
+    return {
+      status: 200,
+      message: 'Ninja mis à jour avec succès',
+      data: ninja,
+    };
   }
 
-  // Supprimer un ninja
-  async remove(id: number): Promise<void> {
-    const ninja = await this.findOne(id); // Vérifie d'abord si le ninja existe
-
-    try {
-      await this.ninjaRepository.remove(ninja);
-    } catch (error) {
-      throw new BadRequestException('Error removing ninja');
+  async remove(id: number) {
+    const ninja = await this.ninjaRepository.findOneBy({ id });
+    if (!ninja) {
+      throw new NotFoundException({
+        status: 404,
+        message: `Ninja avec l'ID ${id} non trouvé.`,
+      });
     }
+
+    await this.ninjaRepository.remove(ninja);
+
+    return {
+      status: 200,
+      message: 'Ninja supprimé avec succès',
+    };
   }
 }
