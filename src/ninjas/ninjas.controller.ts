@@ -10,7 +10,13 @@ import {
 import { NinjasService } from './ninjas.service';
 import { NinjaDto } from './dto/ninja.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { UseGuards } from '@nestjs/common';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('ADMIN')
 @ApiTags('Ninjas')
 @Controller('ninjas')
 export class NinjasController {
